@@ -913,25 +913,24 @@ if n_alignments > 0:
        new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, mutation_rate=2e-8, recombination_map=msprime.RecombinationMap.read_hapmap(rec_map), random_seed=random.randint(1, 10000000))
     else:
        for i in range(0, n_alignments):
-           alignment = []
+           #alignment = []
            new_tree_sequence_obj = msprime.simulate(population_configurations=population_configurations, demographic_events=demographic_events, mutation_rate=mut_rate, length=alignment_length, recombination_rate=rec_rate, random_seed=random.randint(1, 10000000))
-           for sp in range(0,len(species_ids)):
-               alignment.append("")
            
+           alignment_arr = np.empty([len(species_ids), alignment_length], dtype=str)
            n_variants = 0
            in_gene_position = 0    
            for variant in new_tree_sequence_obj.variants():
                 vp = int(variant.site.position)
-                if vp > in_gene_position:  # exclude multiple mutations at the same site (i.e. at the moment we generate only biallelic sites) TO DO: make multiallelics in these cases
+                if vp >= in_gene_position:  # exclude multiple mutations at the same site (i.e. at the moment we generate only biallelic sites) TO DO: make multiallelics in these cases
                     #print("vp: " + str(vp))
                     # fill in invariable sites
-                    for bp in range(in_gene_position,vp-1):
+                    for bp in range(in_gene_position,vp):
                         r = randint(0, 3)
                         thisBase = DNA_alphabet[r]
                         for sp in range(0,len(species_ids)):
-                           alignment[sp] =  alignment[sp] + thisBase
+                           #alignment[sp] =  alignment[sp] + thisBase
+                           alignment_arr[sp][bp] = thisBase
                     
-                    in_gene_position = vp
                     n_variants = n_variants + 1
                     ra = randint(0, 3)
                     ancestralBase = DNA_alphabet[ra]
@@ -940,23 +939,27 @@ if n_alignments > 0:
                     derivedBase = derivedPossibilities[rd]
                     ancestralDerivedDNA = [ancestralBase,derivedBase]
                     for sp in range(0,len(species_ids)):
-                       alignment[sp] =  alignment[sp] + ancestralDerivedDNA[variant.genotypes[sp]]
+                       # alignment[sp] =  alignment[sp] + ancestralDerivedDNA[variant.genotypes[sp]]
+                       alignment_arr[sp][vp] = ancestralDerivedDNA[variant.genotypes[sp]]
+                    in_gene_position = vp + 1
          
            # fill in invariable sites at the end of alignment
            for bp in range(in_gene_position,alignment_length):
                r = randint(0, 3)
                thisBase = DNA_alphabet[r]
                for sp in range(0,len(species_ids)):
-                   alignment[sp] =  alignment[sp] + thisBase  
+                   #alignment[sp] =  alignment[sp] + thisBase
+                   alignment_arr[sp][bp] = thisBase
            
+           #for sp in range(0,len(species_ids)):
+           #    alignment.append(''.join(alignment_arr[sp]))
+               
            #print("alignment_length: " + str(alignment_length))
            #print("len(alignment[0]): " + str(len(alignment[0])))
            #print("len(alignment[1]): " + str(len(alignment[1])))
            alignment_file.write(str(len(species_ids))+" "+str(alignment_length)+"\n")
-           alignment_dict = {}
            for sp in range(0,len(species_ids)):
-                alignment_file.write(species_ids[sp]+'\t'+alignment[sp]+"\n")
-                alignment_dict[species_ids[sp]] = alignment[sp]
+                alignment_file.write(species_ids[sp]+'\t'+''.join(alignment_arr[sp])+"\n")
                 #print(species_ids[sp]+'\t'+alignment[sp])
            
            alignment_file.write("\n")
